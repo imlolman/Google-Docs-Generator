@@ -8,8 +8,6 @@ Live Here: [https://imlolman.github.io/google-docs-generator/](https://imlolman.
 
 Google Doc Generator is a web-based tool designed to automate the creation of Google Documents based on predefined templates and data from Excel sheets. With a user-friendly interface, seamless Google Drive integration, and additional PDF generation capabilities, Google Doc Generator streamlines the process of generating customized documents, saving you time and minimizing the risk of human error.
 
-<!-- Add Image Here -->
-
 [![Google Doc Generator](./doc-generator-demo.png)](https://drive.google.com/drive/folders/1z8IckHReKyh9bPSQU0hQ7NkR9Zf-z75f?usp=sharing)
 
 ## Open Source
@@ -81,6 +79,14 @@ Not needed! Dive right in—it's all web-based.
 ## License
 
 Freedom of use, powered by the MIT License. See the [LICENSE.md](LICENSE.md) for full details.
+
+## Privacy Policy
+
+Google Doc Generator takes your privacy seriously. Though the application performs zero server-side operations and your tokens are stored in local storage, you should be aware that you are authenticating with your Google account and browsing your Google Drive files. Your data never leaves your browser, and we do not collect, store, or transmit any of your personal information. By using this tool, you agree to allow the application to interact with your Google Drive, Google Docs, and Google Sheets for the sole purpose of automating document creation based on the data you provide. For more information, please review our full Privacy Policy.
+
+## Terms of Service
+
+By using Google Doc Generator, you agree to abide by the following terms of service. This tool is provided "as is" and the developers make no warranties, either express or implied, regarding its functionality or reliability. While we strive to keep the tool updated and error-free, we cannot guarantee uninterrupted service. You are solely responsible for the data you input into Google Doc Generator and any documents you generate using it. Any misuse of the tool or violation of these terms can result in termination of your access to the service.
 
 ## Contributing
 
