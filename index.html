@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Favicon -->
+  <link rel="icon" href="/logo.png" type="image/png" />
+  <title>Google Doc Generator: Your Automated Document Creator</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    .file_folder_name {
+      margin-left: 10px;
+      padding: 8px 20px;
+      background: #eee;
+    }
+
+    #log-box {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 100%;
+      max-width: 500px;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      overflow-y: scroll;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 767px) {
+      #log-box {
+        position: relative;
+        margin-top: 10px;
+      }
+    }
+
+    #sheet-buttons .btn.active {
+      background-color: #007bff;
+      color: white;
+    }
+  </style>
+  <script src="https://imlolman.github.io/js/controller.js"></script>
+</head>
+
+<body>
+  <div class="container mt-5">
+    <img src="/logo.png" alt="logo" width="50px" style="margin-bottom: 20px;" />
+    <h1>Google Doc Generator</h1>
+    <p>Your Automated Document Creator</p>
+
+    <!-- Authentication Section -->
+    <div class="mb-3">
+      <button id="authenticate" class="btn btn-primary" onclick="getToken()">
+        Authenticate with Google
+      </button>
+      <button id="logout" class="btn btn-primary" onclick="revokeToken()" disabled>
+        Logout
+      </button>
+    </div>
+
+    <!-- Google Doc Template Selection -->
+    <div class="mb-3">
+      <label for="templateSelect" class="form-label">Select Google Doc Template</label><br>
+      <button id="templateSelect" class="btn btn-secondary">
+        Choose from Google Drive
+      </button> <button id="templateName" class="btn btn-light"></button>
+      <button id="removeTemplate" class="btn btn-sm btn-danger">
+        Remove
+      </button>
+      <input id="templateId" type="hidden" />
+    </div>
+
+    <!-- Excel Sheet Selection -->
+    <div class="mb-3">
+      <label for="sheetSelect" class="form-label">Select Excel Sheet</label><br>
+      <button id="sheetSelect" class="btn btn-secondary">
+        Choose from Google Drive
+      </button>
+      <button id="sheetName" class="btn btn-light"></button>
+      <button id="removeSheet" class="btn btn-sm btn-danger">
+        Remove
+      </button><br>
+
+      <div id="sheet-buttons" class="d-inline"></div>
+
+      <input id="sheetId" type="hidden" />
+      <input id="selectedSheetId" type="hidden" />
+    </div>
+
+    <!-- Google Drive Folder Selection -->
+    <div class="mb-3">
+      <label for="folderSelect" class="form-label">Select Google Drive Destination Folder (Where the generated docs will
+        be)</label><br>
+      <button id="folderSelect" class="btn btn-secondary">
+        Choose from Google Drive
+      </button> <button id="folderName" class="btn btn-light"></button>
+      <button id="removeFolder" class="btn btn-sm btn-danger">
+        Remove
+      </button>
+      <input id="folderId" type="hidden" /><br>
+      <label class="form-check-label ms-3">
+    </div>
+
+    <input type="checkbox" class="form-check-input" id="generatePDFs" />
+    Generate PDFs
+
+    <br>
+    <br>
+
+    <div id="onlyForPDFs" hidden>
+      <div>
+        <!-- Google Drive Folder For PDFs Selection -->
+        <label for="pdfFolderSelect" class="form-label">Select Google Drive Destination Folder For PDFs (Where the
+          generated
+          PDFs will be)</label><br>
+        <button id="pdfFolderSelect" class="btn btn-secondary">
+          Choose from Google Drive
+        </button> <button id="pdfFolderName" class="btn btn-light"></button>
+        <button id="removePDFFolder" class="btn btn-sm btn-danger">
+          Remove
+        </button>
+        <input id="pdfFolderId" type="hidden" /><br>
+        <label class="form-check-label">
+      </div>
+      <input type="checkbox" class="form-check-input" id="deleteDocsAfterPDFs" />
+      Delete Docs after PDFs are generated
+
+      <br>
+      <br>
+    </div>
+
+    <!-- Generate Button -->
+    <button id="generate" class="btn btn-success" disabled onclick="generateDocuments()">
+      Generate Documents
+    </button>
+  </div>
+  <div id="log-box"></div>
+
+
+  <!-- Bootstrap JS (optional) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+<script src="https://accounts.google.com/gsi/client" onload="initClient()" async defer></script>
+<script type="text/javascript" src="https://apis.google.com/js/api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  const client_id = '658580951071-o9mmt0udpsi4hk1ssk73dfjamki04h0d.apps.googleusercontent.com';
+  const developer_key = 'AIzaSyDbIR977ZQ1mjmRNBxrPfi5YMI7sxIbhZM';
+
+  var client;
+  var access_token = localStorage.getItem('access_token');
+
+  gapi.load('picker');
+
+  // if access token is stored in local storage, disable authentication button and name it Authenticated
+  if (access_token) {
+    markAuthenticated();
+    addLog('Authenticated, Ready to generate documents')
+  }
+
+  function initClient() {
+    client = google.accounts.oauth2.initTokenClient({
+      client_id: client_id,
+      scope: 'https://www.googleapis.com/auth/drive',
+      callback: (tokenResponse) => {
+        addLog('Authenticated, Ready to generate documents')
+        access_token = tokenResponse.access_token;
+        localStorage.setItem('access_token', access_token);
+        markAuthenticated();
+      },
+    });
+  }
+
+  function getToken() {
+    addLog('Authenticating...')
+    client.requestAccessToken();
+  }
+
+  function revokeToken() {
+    google.accounts.oauth2.revoke(access_token, () => {
+      addLog('Access token revoked, Unauthenticated')
+      localStorage.removeItem('access_token');
+      markUnauthenticated();
+    });
+  }
+
+  function loadPicker(pickerView, mimeTypes, callback) {
+    gapi.load('picker', function () {
+      const view = new google.picker.DocsView(pickerView);
+      view.setMimeTypes(mimeTypes);
+
+      if (pickerView === google.picker.ViewId.FOLDERS) {
+        view.setSelectFolderEnabled(true);
+      }
+
+      const picker = new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(access_token)
+        .setDeveloperKey(developer_key) // Replace with your actual Developer Key
+        .setCallback(callback)
+        .build();
+
+      picker.setVisible(true);
+    });
+  }
+
+  function pickFolder(callback) {
+    loadPicker(google.picker.ViewId.FOLDERS, null, callback);
+  }
+
+  function pickDocument(callback) {
+    loadPicker(google.picker.ViewId.DOCUMENTS, "application/vnd.google-apps.document", callback);
+  }
+
+  function pickSheet(callback) {
+    loadPicker(google.picker.ViewId.SPREADSHEETS, "application/vnd.google-apps.spreadsheet", callback);
+  }
+
+  // set listener to templateSelect
+  document.getElementById('templateSelect').addEventListener('click', () => {
+    pickDocument((data) => {
+      if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+        const doc = data[google.picker.Response.DOCUMENTS][0];
+        const docId = doc[google.picker.Document.ID];
+        document.getElementById('templateId').value = docId;
+        document.getElementById('templateName').innerText = doc[google.picker.Document.NAME];
+        checkIfUserCanGenerate()
+      }
+    });
+  });
+
+  // set listener to removeTemplate
+  document.getElementById('removeTemplate').addEventListener('click', () => {
+    document.getElementById('templateId').value = '';
+    document.getElementById('templateName').innerText = '';
+    checkIfUserCanGenerate()
+  });
+
+  // set listener to sheetSelect
+  document.getElementById('sheetSelect').addEventListener('click', () => {
+    pickSheet(async (data) => {
+      if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+        const doc = data[google.picker.Response.DOCUMENTS][0];
+        const docId = doc[google.picker.Document.ID];
+        document.getElementById('sheetId').value = docId;
+        document.getElementById('sheetName').innerText = doc[google.picker.Document.NAME];
+
+        // Get sheet names and create buttons for each sheet
+        const sheetNames = await getSheetNames(docId, access_token);
+        const sheetButtonsDiv = document.getElementById('sheet-buttons');
+
+        // Clear existing buttons
+        sheetButtonsDiv.innerHTML = '<br>Choose a sheet from above selected worksheet to generate data:<br>';
+
+        sheetNames.forEach((sheetName, index) => {
+          const sheetButton = document.createElement('button');
+          sheetButton.classList.add('btn', 'btn-light', 'm-1');
+          sheetButton.innerText = sheetName;
+
+          if (index === 0) {
+            sheetButton.classList.add('active');
+            document.getElementById('selectedSheetId').value = sheetName; // Update the hidden input for the selected sheet
+          }
+
+          sheetButton.addEventListener('click', function () {
+            document.querySelectorAll('#sheet-buttons .btn').forEach(btn => btn.classList.remove('active'));
+            sheetButton.classList.add('active');
+            document.getElementById('selectedSheetId').value = sheetName;
+          });
+
+          sheetButtonsDiv.appendChild(sheetButton);
+        });
+
+        checkIfUserCanGenerate();
+      }
+    });
+  });
+
+  // set listener to removeSheet
+  document.getElementById('removeSheet').addEventListener('click', () => {
+    document.getElementById('sheetId').value = '';
+    document.getElementById('sheetName').innerText = '';
+
+    // Clear the sheet buttons
+    document.getElementById('sheet-buttons').innerHTML = '';
+
+    checkIfUserCanGenerate();
+  });
+
+
+  // set listener to folderSelect
+  document.getElementById('folderSelect').addEventListener('click', () => {
+    pickFolder((data) => {
+      if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+        const doc = data[google.picker.Response.DOCUMENTS][0];
+        const docId = doc[google.picker.Document.ID];
+        document.getElementById('folderId').value = docId;
+        document.getElementById('folderName').innerText = doc[google.picker.Document.NAME];
+        checkIfUserCanGenerate()
+      }
+    });
+  });
+
+  // set listener to removeFolder
+  document.getElementById('removeFolder').addEventListener('click', () => {
+    document.getElementById('folderId').value = '';
+    document.getElementById('folderName').innerText = '';
+    checkIfUserCanGenerate()
+  });
+
+  // set listner to generatePDFs
+  document.getElementById('generatePDFs').addEventListener('change', () => {
+    if (document.getElementById('generatePDFs').checked) {
+      document.getElementById('onlyForPDFs').hidden = false;
+    } else {
+      document.getElementById('onlyForPDFs').hidden = true;
+    }
+  });
+
+  // set listener to pdfFolderSelect
+  document.getElementById('pdfFolderSelect').addEventListener('click', () => {
+    pickFolder((data) => {
+      if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+        const doc = data[google.picker.Response.DOCUMENTS][0];
+        const docId = doc[google.picker.Document.ID];
+        document.getElementById('pdfFolderId').value = docId;
+        document.getElementById('pdfFolderName').innerText = doc[google.picker.Document.NAME];
+        checkIfUserCanGenerate()
+      }
+    });
+  });
+
+  // set listener to removePDFFolder
+  document.getElementById('removePDFFolder').addEventListener('click', () => {
+    document.getElementById('pdfFolderId').value = '';
+    document.getElementById('pdfFolderName').innerText = '';
+    checkIfUserCanGenerate()
+  });
+
+  function checkIfUserCanGenerate() {
+    const templateId = document.getElementById('templateId').value;
+    const sheetId = document.getElementById('sheetId').value;
+    const folderId = document.getElementById('folderId').value;
+    if (templateId && sheetId && folderId) {
+      document.getElementById('generate').disabled = false;
+    } else {
+      document.getElementById('generate').disabled = true;
+    }
+  }
+
+  function markAuthenticated() {
+    document.getElementById('authenticate').disabled = true;
+    document.getElementById('authenticate').innerText = 'Authenticated';
+    document.getElementById('logout').disabled = false;
+  }
+
+  function markUnauthenticated() {
+    document.getElementById('authenticate').disabled = false;
+    document.getElementById('authenticate').innerText = 'Authenticate with Google';
+    document.getElementById('logout').disabled = true;
+  }
+
+
+  async function generateDocuments() {
+    const templateId = document.getElementById('templateId').value;
+    const sheetId = document.getElementById('sheetId').value;
+    const folderId = document.getElementById('folderId').value;
+
+    const sheetData = await getSheetData(sheetId, access_token);
+
+    addLog(`Generating ${sheetData.length - 1} documents as found in the sheet...`)
+
+    const headerRow = sheetData[0];
+    const dataRows = sheetData.slice(1);
+
+    for (let [index, row] of dataRows.entries()) {
+      addLog(`---------------- [${index + 1}/${dataRows.length}] ------------------------`);
+      addLog(`Generating File Name: ${row[0]}...`);
+      const docName = row[0];
+      const docData = {};
+      for (let i = 0; i < headerRow.length; i++) {
+        docData[headerRow[i]] = row[i];
+      }
+      const newDocId = await createDocumentFromTemplate(templateId, docName, docData, folderId, access_token);
+
+      // if generatePDFs is checked, convert the doc to PDF
+      if (document.getElementById('generatePDFs').checked) {
+        const pdfFolderId = document.getElementById('pdfFolderId').value;
+        await convertDocToPDF(newDocId, pdfFolderId, access_token);
+        if (document.getElementById('deleteDocsAfterPDFs').checked) {
+          await deleteDoc(newDocId, access_token);
+        }
+      }
+      addLog(`Successfully Generated [${index + 1}/${dataRows.length}] File Name: ${row[0]}`);
+    }
+
+    addLog('All documents generated successfully 🎉🎉🎉')
+    addLog('------------------------')
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Success',
+      text: 'All documents generated successfully',
+    })
+  }
+
+  async function deleteDoc(fileId, accessToken) {
+    addLog(`Deleting Document ${fileId}...`)
+    const deleteUrl = `https://www.googleapis.com/drive/v3/files/${fileId}`;
+    const deleteOptions = {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    };
+
+    let deleteResponse = await fetch(deleteUrl, deleteOptions);
+
+    if (deleteResponse.ok) {
+      addLog("Document deleted");
+    } else {
+      addLog("Error deleting document: ", deleteResponse.statusText);
+    }
+  }
+
+
+  async function createDocumentFromTemplate(templateId, docName, docData, folderId, accessToken) {
+    addLog(`Creating Document: ${docName}...`)
+    // Step 1: Copy the template file to the destination folder
+    const copyUrl = `https://www.googleapis.com/drive/v3/files/${templateId}/copy`;
+    const copyOptions = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        'name': docName,
+        'parents': [folderId],
+      }),
+    };
+
+    let copyResponse = await fetch(copyUrl, copyOptions);
+    let copyData = await copyResponse.json();
+    if (copyData.error) {
+      console.error("Error copying file: ", copyData.error.message);
+      return;
+    }
+
+    const newDocId = copyData.id;
+
+    // Step 2: Replace variables in the new document
+    const docUrl = `https://docs.googleapis.com/v1/documents/${newDocId}`;
+    const docOptions = {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    };
+
+    let docResponse = await fetch(docUrl, docOptions);
+    let docDataResponse = await docResponse.json();
+
+    const requests = [];
+    for (const [key, value] of Object.entries(docData)) {
+      requests.push({
+        replaceAllText: {
+          containsText: {
+            text: `{{${key}}}`,
+            matchCase: true,
+          },
+          replaceText: value,
+        }
+      });
+    }
+
+    const updateUrl = `https://docs.googleapis.com/v1/documents/${newDocId}:batchUpdate`;
+    const updateOptions = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        'requests': requests,
+      }),
+    };
+
+    let updateResponse = await fetch(updateUrl, updateOptions);
+    let updateData = await updateResponse.json();
+
+    if (updateData.error) {
+      console.error("Error updating document: ", updateData.error.message);
+    }
+
+    addLog(`Document Created`)
+
+    return newDocId;
+  }
+
+
+  async function convertDocToPDF(docId, folderId, accessToken) {
+    addLog(`Converting to PDF: ${docId}...`)
+    // Step 1: Get the metadata to determine the name of the document
+    const metadataUrl = `https://www.googleapis.com/drive/v3/files/${docId}`;
+    const metadataOptions = {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    };
+
+    let metadataResponse = await fetch(metadataUrl, metadataOptions);
+    let metadata = await metadataResponse.json();
+    if (metadata.error) {
+      console.error("Error fetching metadata: ", metadata.error.message);
+      return;
+    }
+
+    const docName = metadata.name;
+
+    // Step 2: Export Google Doc as PDF
+    const exportUrl = `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`;
+    const exportOptions = {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    };
+
+    let exportResponse = await fetch(exportUrl, exportOptions);
+    if (!exportResponse.ok) {
+      console.error("Error exporting document: ", exportResponse.statusText);
+      return;
+    }
+
+    const blob = await exportResponse.blob();
+
+    // Step 3: Upload the PDF blob to the folder
+    const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=media';
+    const uploadOptions = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/pdf',
+      },
+      body: blob,
+    };
+
+    let uploadResponse = await fetch(uploadUrl, uploadOptions);
+    let uploadData = await uploadResponse.json();
+    if (uploadData.error) {
+      console.error("Error uploading PDF: ", uploadData.error.message);
+      return;
+    }
+
+    // Step 4: Update metadata to put the uploaded PDF in the correct folder and name it appropriately
+    const updateMetadataUrl = `https://www.googleapis.com/drive/v3/files/${uploadData.id}?addParents=${folderId}`;
+    const updateMetadataOptions = {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        'name': `${docName}.pdf`,
+      }),
+    };
+
+    let updateResponse = await fetch(updateMetadataUrl, updateMetadataOptions);
+    let updateData = await updateResponse.json();
+
+    if (updateData.error) {
+      console.error("Error updating PDF metadata: ", updateData.error.message);
+    }
+
+    addLog(`Converted to PDF: ${docId}`)
+  }
+
+  /** Helper Functions */
+  async function getSheetData(sheetId, accessToken) {
+    addLog('Fetching sheet data...')
+    const sheetName = document.getElementById('selectedSheetId').value;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?access_token=${accessToken}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    addLog(`Sheet data fetched`)
+    return data.values; // 2D array of sheet data
+  }
+
+  async function getSheetNames(fileId, accessToken) {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?fields=sheets.properties.title&access_token=${accessToken}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.error) {
+      console.error("Error fetching sheet names: ", data.error.message);
+      return [];
+    }
+
+    const sheetNames = data.sheets.map(sheet => sheet.properties.title);
+    return sheetNames;
+  }
+
+  function addLog(message) {
+    // Get the current time and format it
+    const now = new Date();
+    const timeString = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+    // Get the log box element
+    const logBox = document.getElementById('log-box');
+
+    // Create a new log entry and add it to the log box
+    const logEntry = document.createElement('div');
+    logEntry.innerHTML = `[${timeString}] ${message}`;
+    logBox.appendChild(logEntry);
+
+    // Scroll to the bottom to always show the latest logs
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+</script>
+
+</html>
