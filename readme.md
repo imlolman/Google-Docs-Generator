@@ -1,6 +1,6 @@
 # Google Doc Generator: Your Automated Document Creator
 
-Live Here: [https://imlolman.github.io/google-doc-generator/](https://imlolman.github.io/google-doc-generator/)
+Live Here: [https://imlolman.github.io/google-docs-generator/](https://imlolman.github.io/google-docs-generator/)
 
 ![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)
 
