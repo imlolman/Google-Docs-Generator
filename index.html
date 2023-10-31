@@ -183,7 +183,7 @@
   function initClient() {
     client = google.accounts.oauth2.initTokenClient({
       client_id: client_id,
-      scope: 'https://www.googleapis.com/auth/drive',
+      scope: 'https://www.googleapis.com/auth/drive.file',
       callback: (tokenResponse) => {
         addLog('Authenticated, Ready to generate documents')
         access_token = tokenResponse.access_token;
