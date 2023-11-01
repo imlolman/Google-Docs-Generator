@@ -60,6 +60,26 @@
     <h1>Google Doc Generator</h1>
     <p>Your Automated Document Creator</p>
 
+    <div class="row">
+      <div class="col-md-3">
+        <div class="mb-3">
+          <label for="apiKey" class="form-label">API Key <a class="text-primary" data-bs-toggle="modal"
+              data-bs-target="#api-key-model">View
+              Details</a></label>
+          <input type="text" class="form-control" id="apiKey" placeholder="Enter API Key" />
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="mb-3">
+          <label for="clientId" class="form-label">Oauth Client ID <a class="text-primary" data-bs-toggle="modal"
+              data-bs-target="#oauth-model">View
+              Details</a></label>
+          <input type="text" class="form-control" id="clientId" placeholder="Enter Oauth Client ID" />
+        </div>
+      </div>
+    </div>
+
+
     <!-- Authentication Section -->
     <div class="mb-3">
       <button id="authenticate" class="btn btn-primary" onclick="getToken()">
@@ -159,6 +179,68 @@
   </div>
 
 
+  <div class="modal" tabindex="-1" id="api-key-model">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">API Key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>In order to use this tool, you need to create a Google Cloud Platform project at <a
+              href="https://console.cloud.google.com/">https://console.cloud.google.com/</a>, then go to "<b>API and
+              Services</b>" > "<b>Credentials</b>" and create an API Key. Then copy the API Key and paste it in the "API
+            Key"
+            field
+            above.</p>
+          <p>Additionally, you need to enable the below 4 APIs in your project, search these APIs in the search bar of
+            the
+            "<b>API and Services</b>" page and enable them one by one.</p>
+          <ol>
+            <li>Google Docs API</li>
+            <li>Google Drive API</li>
+            <li>Google Picker API</li>
+            <li>Google Sheets API</li>
+          </ol>
+          </p>
+          <p>The API Key will be cached/saved in your browser's Local Storage, so you don't have to enter it again and
+            again.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" tabindex="-1" id="oauth-model">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">OAuth Client ID</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>You need to go to <a href="https://console.cloud.google.com/">https://console.cloud.google.com/</a> and
+            create an OAuth Client, below are the details you need to enter.</p>
+          <ul>
+            <li>Authorized JavaScript origins: <b>https://imlolman.github.io</b></li>
+            <li>Authorized redirect URIs: <b>https://imlolman.github.io/Google-Docs-Generator/</b></li>
+          </ul>
+          <p>After creating the OAuth Client, copy the Client ID and paste it in the "Oauth Client ID" field above.</p>
+          <p>You will also have to configure OAuth Consent Screen and add
+            "<b>https://www.googleapis.com/auth/drive.file</b>" scope in the same.</p>
+          <p>The Client ID will be cached/saved in your browser's Local Storage, so you don't have to enter it again and
+            again.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Bootstrap JS (optional) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
@@ -166,8 +248,27 @@
 <script type="text/javascript" src="https://apis.google.com/js/api.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-  const client_id = '105636599507-c3cvimm07h9gvulc85i0maf5sddot0qc.apps.googleusercontent.com';
-  const developer_key = 'AIzaSyBuLE65F8-WqtKse59_P7Nr4uurLrwIrIo';
+  let client_id;
+  let developer_key;
+
+  // updating the client_id and developer_key from the input fields
+  document.getElementById('clientId').addEventListener('change', () => {
+    client_id = document.getElementById('clientId').value;
+    localStorage.setItem('client_id', client_id);
+  });
+
+  document.getElementById('apiKey').addEventListener('change', () => {
+    developer_key = document.getElementById('apiKey').value;
+    localStorage.setItem('developer_key', developer_key);
+  });
+
+  // getting the client_id and developer_key from the local storage
+  client_id = localStorage.getItem('client_id');
+  developer_key = localStorage.getItem('developer_key');
+
+  // set the input fields to the values from local storage
+  document.getElementById('clientId').value = client_id;
+  document.getElementById('apiKey').value = developer_key;
 
   var client;
   var access_token = localStorage.getItem('access_token');
@@ -183,7 +284,7 @@
   function initClient() {
     client = google.accounts.oauth2.initTokenClient({
       client_id: client_id,
-      scope: 'https://www.googleapis.com/auth/drive.file',
+      scope: 'https://www.googleapis.com/auth/drive',
       callback: (tokenResponse) => {
         addLog('Authenticated, Ready to generate documents')
         access_token = tokenResponse.access_token;
